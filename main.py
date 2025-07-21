@@ -1,96 +1,129 @@
-# Arquivo: main.py
+import asynckivy
+
+from kivy.lang import Builder
+from kivy.properties import StringProperty, ObjectProperty, BooleanProperty
+from kivy_garden.mapview import MapView
 
 from kivymd.app import MDApp
-from kivy.lang import Builder
-from kivymd.uix.screen import MDScreen
-import webbrowser
+from kivymd.uix.behaviors import TouchBehavior
+from kivymd.uix.boxlayout import MDBoxLayout
 
-# A linha Window.size só deve ser usada para testes no desktop.
-# Em um app real, ela deve ser removida para que o app ocupe a tela inteira.
-# from kivy.core.window import Window
-# Window.size = (360, 640)
+KV = '''
+#:import MapSource kivy_garden.mapview.MapSource
+#:import asynckivy asynckivy
 
 
-class MainScreen(MDScreen):
-    """
-    A tela principal da calculadora. A lógica agora está no app principal,
-    e a tela apenas contém os widgets.
-    """
-    pass
+<TypeMapElement>
+    orientation: "vertical"
+    adaptive_height: True
+    spacing: "8dp"
+
+    MDIconButton:
+        id: icon
+        icon: root.icon
+        theme_bg_color: "Custom"
+        md_bg_color: "#EDF1F9" if not root.selected else app.theme_cls.primaryColor
+        pos_hint: {"center_x": .5}
+        theme_icon_color: "Custom"
+        icon_color: "white" if root.selected else "black"
+        on_release: app.set_active_element(root, root.title.lower())
+
+    MDLabel:
+        text: root.title
+        pos_hint: {"center_x": .5}
+        halign: "center"
+        adaptive_height: True
 
 
-class SettingsScreen(MDScreen):
-    """
-    A tela de configurações.
-    """
-    pass
+MDScreen:
+
+    MDNavigationLayout:
+
+        MDScreenManager:
+
+            MDScreen:
+
+                CustomMapView:
+                    bottom_sheet: bottom_sheet
+                    map_source: MapSource(url=app.map_sources[app.current_map])
+                    lat: 46.5124
+                    lon: 47.9812
+                    zoom: 12
+
+        MDBottomSheet:
+            id: bottom_sheet
+            sheet_type: "standard"
+            size_hint_y: None
+            height: "150dp"
+            on_open: asynckivy.start(app.generate_content())
+
+            MDBottomSheetDragHandle:
+                drag_handle_color: "grey"
+
+                MDBottomSheetDragHandleTitle:
+                    text: "Select type map"
+                    pos_hint: {"center_y": .5}
+
+                MDBottomSheetDragHandleButton:
+                    icon: "close"
+                    ripple_effect: False
+                    on_release: bottom_sheet.set_state("toggle")
+
+            BoxLayout:
+                id: content_container
+                padding: 0, 0, 0, "16dp"
+'''
 
 
-class CalculadoraApp(MDApp):
+class TypeMapElement(MDBoxLayout):
+    selected = BooleanProperty(False)
+    icon = StringProperty()
+    title = StringProperty()
+
+
+class CustomMapView(MapView, TouchBehavior):
+    bottom_sheet = ObjectProperty()
+
+    def on_double_tap(self, touch, *args):
+        if self.bottom_sheet:
+            self.bottom_sheet.set_state("toggle")
+
+
+class Example(MDApp):
+    map_sources = {
+        "street": "https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}",
+        "sputnik": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+        "hybrid": "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
+    }
+    current_map = StringProperty("street")
+
+    async def generate_content(self):
+        icons = {
+            "street": "google-street-view",
+            "sputnik": "space-station",
+            "hybrid": "map-legend",
+        }
+        if not self.root.ids.content_container.children:
+            for i, title in enumerate(self.map_sources.keys()):
+                await asynckivy.sleep(0)
+                self.root.ids.content_container.add_widget(
+                    TypeMapElement(
+                        title=title.capitalize(),
+                        icon=icons[title],
+                        selected=not i,
+                    )
+                )
+
+    def set_active_element(self, instance, type_map):
+        for element in self.root.ids.content_container.children:
+            if instance == element:
+                element.selected = True
+                self.current_map = type_map
+            else:
+                element.selected = False
+
     def build(self):
-        # Define o tema inicial do app
-        self.theme_cls.primary_palette = "Green"
-        self.theme_cls.theme_style = "Light"
-        # Carrega a interface a partir de um arquivo .kv separado
-        # O Kivy faz isso automaticamente se o nome do arquivo for 'calculadora.kv'
-        return Builder.load_file('calculadora.kv')
-
-    def on_button_click(self, value: str):
-        """Adiciona um valor ao display da calculadora."""
-        display = self.root.get_screen("main").ids.display
-        current_text = display.text
-
-        # Se o texto atual for '0' ou um 'Erro', substitui pelo novo valor
-        if current_text == '0' or current_text == 'Erro':
-            display.text = value
-        else:
-            display.text += value
-
-    def clear_all(self):
-        """Limpa o display, conectado ao botão 'AC'."""
-        self.root.get_screen("main").ids.display.text = '0'
-
-    def backspace(self):
-        """Apaga o último caractere do display."""
-        display = self.root.get_screen("main").ids.display
-        current_text = display.text
-        if len(current_text) > 1:
-            display.text = current_text[:-1]
-        else:
-            display.text = '0'
-
-    def calculate(self):
-        """Calcula a expressão no display."""
-        display = self.root.get_screen("main").ids.display
-        try:
-            # Substitui os caracteres visuais pelos operadores reais do Python
-            expression = display.text.replace('x', '*').replace('÷', '/').replace(',', '.')
-            # Usar eval() é perigoso em produção, mas ok para uma calculadora simples
-            result = eval(expression)
-            
-            # Formata o resultado para remover o ".0" de números inteiros
-            if result == int(result):
-                result = int(result)
-                
-            display.text = str(result).replace('.', ',')
-        except Exception:
-            display.text = 'Erro'
-
-    def change_screen(self, screen_name: str):
-        """Muda a tela atual do ScreenManager."""
-        self.root.current = screen_name
-
-    def open_link(self):
-        """Abre o link do seu Telegram."""
-        webbrowser.open("https://t.me/Mayc00m")
-
-    def toggle_theme(self, switch_instance, active: bool):
-        """Alterna entre os temas Claro e Escuro."""
-        if active:
-            self.theme_cls.theme_style = "Dark"
-        else:
-            self.theme_cls.theme_style = "Light"
+        return Builder.load_string(KV)
 
 
-if __name__ == "__main__":
-    CalculadoraApp().run()
+Example().run()
