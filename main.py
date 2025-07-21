@@ -1,51 +1,96 @@
-from kivy.core.window import Window
-from kivy.lang import Builder
+# Arquivo: main.py
 
 from kivymd.app import MDApp
+from kivy.lang import Builder
 from kivymd.uix.screen import MDScreen
-from kivymd.utils.set_bars_colors import set_bars_colors
+import webbrowser
+
+# A linha Window.size só deve ser usada para testes no desktop.
+# Em um app real, ela deve ser removida para que o app ocupe a tela inteira.
+# from kivy.core.window import Window
+# Window.size = (360, 640)
 
 
-class SampleApp(MDApp):
+class MainScreen(MDScreen):
+    """
+    A tela principal da calculadora. A lógica agora está no app principal,
+    e a tela apenas contém os widgets.
+    """
+    pass
 
-    def __init__(self, **kwargs) -> None:
-        super(SampleApp, self).__init__(**kwargs)
-        self.theme_cls.primary_palette = "Darkblue"
 
-    def build(self) -> MDScreen:
-        self.appKv="""
-MDScreen:
-    MDButton:
-        style: 'tonal'
-        pos_hint: {'center_x': 0.5, 'center_y': 0.5}
-        on_press:
-            app.apply_styles("Light") if (not app.theme_cls.theme_style == "Light") else app.apply_styles("Dark")
+class SettingsScreen(MDScreen):
+    """
+    A tela de configurações.
+    """
+    pass
 
-        MDButtonText:
-            text: 'Hello, World!'
-"""
-        AppScreen = Builder.load_string(self.appKv)
-        self.apply_styles("Light")
-        return AppScreen
 
-    def apply_styles(self, style: str = "Light") -> None:
-        self.theme_cls.theme_style = style
-        if style == "Light":
-            Window.clearcolor = status_color = nav_color = app.theme_cls.surfaceColor
-            style = "Dark"
+class CalculadoraApp(MDApp):
+    def build(self):
+        # Define o tema inicial do app
+        self.theme_cls.primary_palette = "Green"
+        self.theme_cls.theme_style = "Light"
+        # Carrega a interface a partir de um arquivo .kv separado
+        # O Kivy faz isso automaticamente se o nome do arquivo for 'calculadora.kv'
+        return Builder.load_file('calculadora.kv')
+
+    def on_button_click(self, value: str):
+        """Adiciona um valor ao display da calculadora."""
+        display = self.root.get_screen("main").ids.display
+        current_text = display.text
+
+        # Se o texto atual for '0' ou um 'Erro', substitui pelo novo valor
+        if current_text == '0' or current_text == 'Erro':
+            display.text = value
         else:
-            Window.clearcolor = status_color = nav_color = app.theme_cls.surfaceColor
-            style = "Light"
-        self.set_bars_colors(status_color, nav_color, style)
+            display.text += value
 
-    def set_bars_colors(self, status_color: list[float] = [1.0, 1.0, 1.0, 1.0], nav_color: list[float] = [1.0, 1.0, 1.0, 1.0], style: str = "Dark") -> None:
-        set_bars_colors(
-            status_color,  # status bar color
-            nav_color,  # navigation bar color
-            style,  # icons style of status and navigation bar
-        )
+    def clear_all(self):
+        """Limpa o display, conectado ao botão 'AC'."""
+        self.root.get_screen("main").ids.display.text = '0'
+
+    def backspace(self):
+        """Apaga o último caractere do display."""
+        display = self.root.get_screen("main").ids.display
+        current_text = display.text
+        if len(current_text) > 1:
+            display.text = current_text[:-1]
+        else:
+            display.text = '0'
+
+    def calculate(self):
+        """Calcula a expressão no display."""
+        display = self.root.get_screen("main").ids.display
+        try:
+            # Substitui os caracteres visuais pelos operadores reais do Python
+            expression = display.text.replace('x', '*').replace('÷', '/').replace(',', '.')
+            # Usar eval() é perigoso em produção, mas ok para uma calculadora simples
+            result = eval(expression)
+            
+            # Formata o resultado para remover o ".0" de números inteiros
+            if result == int(result):
+                result = int(result)
+                
+            display.text = str(result).replace('.', ',')
+        except Exception:
+            display.text = 'Erro'
+
+    def change_screen(self, screen_name: str):
+        """Muda a tela atual do ScreenManager."""
+        self.root.current = screen_name
+
+    def open_link(self):
+        """Abre o link do seu Telegram."""
+        webbrowser.open("https://t.me/Mayc00m")
+
+    def toggle_theme(self, switch_instance, active: bool):
+        """Alterna entre os temas Claro e Escuro."""
+        if active:
+            self.theme_cls.theme_style = "Dark"
+        else:
+            self.theme_cls.theme_style = "Light"
+
 
 if __name__ == "__main__":
-    app = SampleApp()
-    app.run()
-    
+    CalculadoraApp().run()
