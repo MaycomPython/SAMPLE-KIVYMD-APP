@@ -1,96 +1,93 @@
-# Arquivo: main.py
-
+# main.py
 from kivymd.app import MDApp
 from kivy.lang import Builder
-from kivymd.uix.screen import MDScreen
-import webbrowser
 
-# A linha Window.size só deve ser usada para testes no desktop.
-# Em um app real, ela deve ser removida para que o app ocupe a tela inteira.
-# from kivy.core.window import Window
-# Window.size = (360, 640)
+# Opcional: Para simular o tamanho de uma tela de celular no desktop
+from kivy.core.window import Window
+Window.size = (320, 600)
 
+# String multi-linha contendo o layout KV com a correção final
+LOGIN_SCREEN_KV = '''
+MDScreen:
 
-class MainScreen(MDScreen):
-    """
-    A tela principal da calculadora. A lógica agora está no app principal,
-    e a tela apenas contém os widgets.
-    """
-    pass
+    MDFloatLayout:
+        
+        MDCard:
+            id: login_card
+            size_hint: .8, .6
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            elevation: 10
+            padding: "25dp"
+            spacing: "25dp"
+            orientation: 'vertical'
 
+            MDLabel:
+                text: "Login"
+                halign: "center"
+                size_hint_y: None
+                height: self.texture_size[1]
 
-class SettingsScreen(MDScreen):
-    """
-    A tela de configurações.
-    """
-    pass
+            MDTextField:
+                id: username_field
+                hint_text: "Usuário"
+                helper_text: "Digite seu nome de usuário"
+                helper_text_mode: "on_focus"
+                icon_right: "account"
+                # --- MUDANÇA AQUI ---
+                # 'primary_color' foi substituído por 'primaryColor'
+                icon_right_color: app.theme_cls.primaryColor
+                pos_hint: {"center_x": 0.5}
+                size_hint_x: None
+                width: "220dp"
 
+            MDTextField:
+                id: password_field
+                hint_text: "Senha"
+                helper_text: "Digite sua senha"
+                helper_text_mode: "on_focus"
+                icon_right: "eye-off"
+                # --- MUDANÇA AQUI ---
+                # 'primary_color' foi substituído por 'primaryColor'
+                icon_right_color: app.theme_cls.primaryColor
+                pos_hint: {"center_x": 0.5}
+                size_hint_x: None
+                width: "220dp"
+                password: True
 
-class CalculadoraApp(MDApp):
-    def build(self):
-        # Define o tema inicial do app
-        self.theme_cls.primary_palette = "Green"
-        self.theme_cls.theme_style = "Light"
-        # Carrega a interface a partir de um arquivo .kv separado
-        # O Kivy faz isso automaticamente se o nome do arquivo for 'calculadora.kv'
-        return Builder.load_file('calculadora.kv')
-
-    def on_button_click(self, value: str):
-        """Adiciona um valor ao display da calculadora."""
-        display = self.root.get_screen("main").ids.display
-        current_text = display.text
-
-        # Se o texto atual for '0' ou um 'Erro', substitui pelo novo valor
-        if current_text == '0' or current_text == 'Erro':
-            display.text = value
-        else:
-            display.text += value
-
-    def clear_all(self):
-        """Limpa o display, conectado ao botão 'AC'."""
-        self.root.get_screen("main").ids.display.text = '0'
-
-    def backspace(self):
-        """Apaga o último caractere do display."""
-        display = self.root.get_screen("main").ids.display
-        current_text = display.text
-        if len(current_text) > 1:
-            display.text = current_text[:-1]
-        else:
-            display.text = '0'
-
-    def calculate(self):
-        """Calcula a expressão no display."""
-        display = self.root.get_screen("main").ids.display
-        try:
-            # Substitui os caracteres visuais pelos operadores reais do Python
-            expression = display.text.replace('x', '*').replace('÷', '/').replace(',', '.')
-            # Usar eval() é perigoso em produção, mas ok para uma calculadora simples
-            result = eval(expression)
+            MDButton:
+                style: "elevated"
+                text: "ENTRAR"
+                pos_hint: {"center_x": 0.5}
+                on_release: app.login()
             
-            # Formata o resultado para remover o ".0" de números inteiros
-            if result == int(result):
-                result = int(result)
-                
-            display.text = str(result).replace('.', ',')
-        except Exception:
-            display.text = 'Erro'
+            MDLabel:
+                id: login_status
+                text: ""
+                halign: "center"
+'''
 
-    def change_screen(self, screen_name: str):
-        """Muda a tela atual do ScreenManager."""
-        self.root.current = screen_name
 
-    def open_link(self):
-        """Abre o link do seu Telegram."""
-        webbrowser.open("https://t.me/Mayc00m")
+class LoginApp(MDApp):
 
-    def toggle_theme(self, switch_instance, active: bool):
-        """Alterna entre os temas Claro e Escuro."""
-        if active:
-            self.theme_cls.theme_style = "Dark"
+    def build(self):
+        # A definição do tema no código Python continua usando snake_case
+        self.theme_cls.theme_style = "Dark"
+        self.theme_cls.primary_palette = "Blue"
+        return Builder.load_string(LOGIN_SCREEN_KV)
+
+    def login(self):
+        username = self.root.ids.username_field.text
+        password = self.root.ids.password_field.text
+        
+        if username == "admin" and password == "1234":
+            print(f"Login bem-sucedido com o usuário: {username}")
+            self.root.ids.login_status.text = f"Bem-vindo, {username}!"
+            self.root.ids.login_status.theme_text_color = "Success"
         else:
-            self.theme_cls.theme_style = "Light"
+            print("Credenciais inválidas!")
+            self.root.ids.login_status.text = "Usuário ou senha inválidos!"
+            self.root.ids.login_status.theme_text_color = "Error"
 
 
-if __name__ == "__main__":
-    CalculadoraApp().run()
+if __name__ == '__main__':
+    LoginApp().run()
