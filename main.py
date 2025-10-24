@@ -1,93 +1,137 @@
-# main.py
-from kivymd.app import MDApp
 from kivy.lang import Builder
+from kivymd.app import MDApp
+from kivy.metrics import dp
 
-# Opcional: Para simular o tamanho de uma tela de celular no desktop
-from kivy.core.window import Window
-Window.size = (320, 600)
+# Import dos componentes de Dialog
+from kivymd.uix.dialog import (
+    MDDialog,
+    MDDialogHeadlineText,
+    MDDialogSupportingText,
+    MDDialogButtonContainer,
+)
 
-# String multi-linha contendo o layout KV com a correção final
-LOGIN_SCREEN_KV = '''
+# --- CORREÇÃO AQUI ---
+# Import dos componentes de Button que serão criados no código Python
+from kivymd.uix.button import MDButton, MDButtonText
+
+
+KV = '''
 MDScreen:
+    md_bg_color: self.theme_cls.backgroundColor
 
-    MDFloatLayout:
-        
-        MDCard:
-            id: login_card
-            size_hint: .8, .6
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-            elevation: 10
-            padding: "25dp"
-            spacing: "25dp"
-            orientation: 'vertical'
+    MDBoxLayout:
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(20)
+        adaptive_height: True
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        size_hint_x: 0.9
 
-            MDLabel:
-                text: "Login"
-                halign: "center"
-                size_hint_y: None
-                height: self.texture_size[1]
+        MDLabel:
+            text: 'Bem-vindo'
+            theme_text_color: 'Primary'
+            halign: 'center'
+            font_size: "26sp"
+            bold: True
+            adaptive_height: True
 
-            MDTextField:
-                id: username_field
-                hint_text: "Usuário"
-                helper_text: "Digite seu nome de usuário"
-                helper_text_mode: "on_focus"
-                icon_right: "account"
-                # --- MUDANÇA AQUI ---
-                # 'primary_color' foi substituído por 'primaryColor'
-                icon_right_color: app.theme_cls.primaryColor
-                pos_hint: {"center_x": 0.5}
-                size_hint_x: None
-                width: "220dp"
+        MDLabel:
+            text: 'Faça login para continuar'
+            theme_text_color: 'Secondary'
+            halign: 'center'
+            font_size: "16sp"
+            adaptive_height: True
 
-            MDTextField:
-                id: password_field
-                hint_text: "Senha"
-                helper_text: "Digite sua senha"
-                helper_text_mode: "on_focus"
-                icon_right: "eye-off"
-                # --- MUDANÇA AQUI ---
-                # 'primary_color' foi substituído por 'primaryColor'
-                icon_right_color: app.theme_cls.primaryColor
-                pos_hint: {"center_x": 0.5}
-                size_hint_x: None
-                width: "220dp"
-                password: True
-
-            MDButton:
-                style: "elevated"
-                text: "ENTRAR"
-                pos_hint: {"center_x": 0.5}
-                on_release: app.login()
+        MDTextField:
+            id: usuario
+            mode: "filled"
+            size_hint_x: 1
             
-            MDLabel:
-                id: login_status
-                text: ""
-                halign: "center"
+            MDTextFieldHintText:
+                text: "Usuário ou E-mail"
+            
+            MDTextFieldLeadingIcon:
+                icon: "account"
+
+        MDTextField:
+            id: senha
+            password: True
+            mode: "filled"
+            size_hint_x: 1
+
+            MDTextFieldHintText:
+                text: "Senha"
+            
+            MDTextFieldLeadingIcon:
+                icon: "lock"
+            
+            MDTextFieldTrailingIcon:
+                icon: "eye-off"
+                on_touch_down:
+                    if self.icon == "eye-off": self.icon = "eye"; senha.password = False
+                    else: self.icon = "eye-off"; senha.password = True
+
+        MDButton:
+            style: "filled"
+            on_release: app.fazer_login(usuario.text, senha.text)
+            size_hint_x: 1
+            pos_hint: {'center_x': 0.5}
+
+            MDButtonText:
+                text: "ENTRAR"
+                font_size: "16sp"
+                bold: True
+                
+        MDButton:
+            style: "text"
+            on_release: app.esqueci_senha()
+            pos_hint: {'center_x': 0.5}
+
+            MDButtonText:
+                text: 'Esqueci minha senha'
+                theme_text_color: 'Primary'
+                font_size: "14sp"
 '''
 
-
 class LoginApp(MDApp):
+    dialog = None
 
     def build(self):
-        # A definição do tema no código Python continua usando snake_case
-        self.theme_cls.theme_style = "Dark"
-        self.theme_cls.primary_palette = "Blue"
-        return Builder.load_string(LOGIN_SCREEN_KV)
+        self.theme_cls.primary_palette = "Green"
+        self.theme_cls.theme_style = "Light"
+        return Builder.load_string(KV)
 
-    def login(self):
-        username = self.root.ids.username_field.text
-        password = self.root.ids.password_field.text
-        
-        if username == "admin" and password == "1234":
-            print(f"Login bem-sucedido com o usuário: {username}")
-            self.root.ids.login_status.text = f"Bem-vindo, {username}!"
-            self.root.ids.login_status.theme_text_color = "Success"
+    def fazer_login(self, usuario, senha):
+        if usuario.strip() and senha.strip():
+            self.show_alert_dialog("Sucesso!", f"Login realizado para o usuário: {usuario}")
         else:
-            print("Credenciais inválidas!")
-            self.root.ids.login_status.text = "Usuário ou senha inválidos!"
-            self.root.ids.login_status.theme_text_color = "Error"
+            self.show_alert_dialog("Erro", "Por favor, preencha todos os campos.")
+            
+    def esqueci_senha(self):
+        self.show_alert_dialog("Aviso", "Função 'Esqueci minha senha' ainda não foi implementada.")
 
+    def show_alert_dialog(self, title, text):
+        if self.dialog:
+            return
+
+        self.dialog = MDDialog(
+            MDDialogHeadlineText(text=title),
+            MDDialogSupportingText(text=text),
+            MDDialogButtonContainer(
+                MDButton( # Agora o Python sabe o que é MDButton
+                    MDButtonText(text="OK"), # E o que é MDButtonText
+                    style="text",
+                    on_release=self.close_dialog,
+                ),
+                spacing="8dp",
+            ),
+        )
+        self.dialog.open()
+
+    def close_dialog(self, *args):
+        if self.dialog:
+            self.dialog.dismiss()
+            self.dialog = None
 
 if __name__ == '__main__':
     LoginApp().run()
