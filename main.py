@@ -1,137 +1,58 @@
+from kivy import platform
 from kivy.lang import Builder
+from kivy.clock import Clock
+
 from kivymd.app import MDApp
-from kivy.metrics import dp
-
-# Import dos componentes de Dialog
-from kivymd.uix.dialog import (
-    MDDialog,
-    MDDialogHeadlineText,
-    MDDialogSupportingText,
-    MDDialogButtonContainer,
-)
-
-# --- CORREÇÃO AQUI ---
-# Import dos componentes de Button que serão criados no código Python
-from kivymd.uix.button import MDButton, MDButtonText
-
 
 KV = '''
 MDScreen:
-    md_bg_color: self.theme_cls.backgroundColor
+    md_bg_color: app.theme_cls.surfaceColor
 
-    MDBoxLayout:
-        orientation: 'vertical'
-        padding: dp(20)
-        spacing: dp(20)
-        adaptive_height: True
-        pos_hint: {"center_x": 0.5, "center_y": 0.5}
-        size_hint_x: 0.9
+    MDButton:
+        style: "elevated"
+        pos_hint: {"center_x": .5, "center_y": .5}
 
-        MDLabel:
-            text: 'Bem-vindo'
-            theme_text_color: 'Primary'
-            halign: 'center'
-            font_size: "26sp"
-            bold: True
-            adaptive_height: True
+        MDButtonIcon:
+            icon: "plus"
 
-        MDLabel:
-            text: 'Faça login para continuar'
-            theme_text_color: 'Secondary'
-            halign: 'center'
-            font_size: "16sp"
-            adaptive_height: True
-
-        MDTextField:
-            id: usuario
-            mode: "filled"
-            size_hint_x: 1
-            
-            MDTextFieldHintText:
-                text: "Usuário ou E-mail"
-            
-            MDTextFieldLeadingIcon:
-                icon: "account"
-
-        MDTextField:
-            id: senha
-            password: True
-            mode: "filled"
-            size_hint_x: 1
-
-            MDTextFieldHintText:
-                text: "Senha"
-            
-            MDTextFieldLeadingIcon:
-                icon: "lock"
-            
-            MDTextFieldTrailingIcon:
-                icon: "eye-off"
-                on_touch_down:
-                    if self.icon == "eye-off": self.icon = "eye"; senha.password = False
-                    else: self.icon = "eye-off"; senha.password = True
-
-        MDButton:
-            style: "filled"
-            on_release: app.fazer_login(usuario.text, senha.text)
-            size_hint_x: 1
-            pos_hint: {'center_x': 0.5}
-
-            MDButtonText:
-                text: "ENTRAR"
-                font_size: "16sp"
-                bold: True
-                
-        MDButton:
-            style: "text"
-            on_release: app.esqueci_senha()
-            pos_hint: {'center_x': 0.5}
-
-            MDButtonText:
-                text: 'Esqueci minha senha'
-                theme_text_color: 'Primary'
-                font_size: "14sp"
+        MDButtonText:
+            text: "Elevated"
 '''
 
-class LoginApp(MDApp):
-    dialog = None
 
+class Example(MDApp):
     def build(self):
-        self.theme_cls.primary_palette = "Green"
-        self.theme_cls.theme_style = "Light"
         return Builder.load_string(KV)
 
-    def fazer_login(self, usuario, senha):
-        if usuario.strip() and senha.strip():
-            self.show_alert_dialog("Sucesso!", f"Login realizado para o usuário: {usuario}")
-        else:
-            self.show_alert_dialog("Erro", "Por favor, preencha todos os campos.")
-            
-    def esqueci_senha(self):
-        self.show_alert_dialog("Aviso", "Função 'Esqueci minha senha' ainda não foi implementada.")
+    def on_resume(self, *args):
+        '''Updating the color scheme when the application resumes.'''
 
-    def show_alert_dialog(self, title, text):
-        if self.dialog:
-            return
+        self.theme_cls.set_colors()
 
-        self.dialog = MDDialog(
-            MDDialogHeadlineText(text=title),
-            MDDialogSupportingText(text=text),
-            MDDialogButtonContainer(
-                MDButton( # Agora o Python sabe o que é MDButton
-                    MDButtonText(text="OK"), # E o que é MDButtonText
-                    style="text",
-                    on_release=self.close_dialog,
-                ),
-                spacing="8dp",
-            ),
-        )
-        self.dialog.open()
+    def set_dynamic_color(self, *args) -> None:
+        '''
+        When sets the `dynamic_color` value, the self method will be
+        `called.theme_cls.set_colors()` which will generate a color
+        scheme from a custom wallpaper if `dynamic_color` is `True`.
+        '''
 
-    def close_dialog(self, *args):
-        if self.dialog:
-            self.dialog.dismiss()
-            self.dialog = None
+        self.theme_cls.dynamic_color = True
 
-if __name__ == '__main__':
-    LoginApp().run()
+    def on_start(self) -> None:
+        '''
+        It is fired at the start of the application and requests the
+        necessary permissions.
+        '''
+
+        def callback(permission, results):
+            if all([res for res in results]):
+                Clock.schedule_once(self.set_dynamic_color)
+
+        if platform == "android":
+            from android.permissions import Permission, request_permissions
+
+            permissions = [Permission.READ_EXTERNAL_STORAGE]
+            request_permissions(permissions, callback)
+
+
+Example().run()
