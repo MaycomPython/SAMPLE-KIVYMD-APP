@@ -1,110 +1,195 @@
 from kivy.lang import Builder
-from kivy.clock import Clock
 from kivymd.app import MDApp
+from kivy.metrics import dp
+from kivy.clock import Clock
+
+# Import dos componentes de Dialog
+from kivymd.uix.dialog import (
+    MDDialog,
+    MDDialogHeadlineText,
+    MDDialogSupportingText,
+    MDDialogButtonContainer,
+)
+
+# Import dos componentes de Button que serão criados no código Python
+from kivymd.uix.button import MDButton, MDButtonText
+
 
 KV = '''
 MDScreen:
-    md_bg_color: app.theme_cls.surfaceColor
+    md_bg_color: self.theme_cls.backgroundColor
 
     MDBoxLayout:
-        orientation: "vertical"
-        spacing: "20dp"
-        padding: "20dp"
-        pos_hint: {"center_x": .5, "center_y": .5}
+        orientation: 'vertical'
+        padding: dp(20)
+        spacing: dp(20)
+        adaptive_height: True
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+        size_hint_x: 0.9
 
         MDLabel:
-            id: status_label
-            text: "Aguardando ativação..."
-            halign: "center"
-            theme_text_color: "Primary"
-            adaptive_size: True
+            text: 'Bem-vindo'
+            theme_text_color: 'Primary'
+            halign: 'center'
+            font_size: "26sp"
+            bold: True
+            adaptive_height: True
+
+        MDLabel:
+            text: 'Faça login para continuar'
+            theme_text_color: 'Secondary'
+            halign: 'center'
+            font_size: "16sp"
+            adaptive_height: True
+
+        MDTextField:
+            id: usuario
+            mode: "filled"
+            size_hint_x: 1
+            
+            MDTextFieldHintText:
+                text: "Usuário ou E-mail"
+            
+            MDTextFieldLeadingIcon:
+                icon: "account"
+
+        MDTextField:
+            id: senha
+            password: True
+            mode: "filled"
+            size_hint_x: 1
+
+            MDTextFieldHintText:
+                text: "Senha"
+            
+            MDTextFieldLeadingIcon:
+                icon: "lock"
+            
+            MDTextFieldTrailingIcon:
+                icon: "eye-off"
+                on_touch_down:
+                    if self.icon == "eye-off": self.icon = "eye"; senha.password = False
+                    else: self.icon = "eye-off"; senha.password = True
 
         MDButton:
-            id: check_btn
-            text: "Ativar Cores Dinâmicas"
-            pos_hint: {"center_x": .5}
-            on_release: app.activate_dynamic_color()
-            adaptive_size: True
+            style: "filled"
+            on_release: app.fazer_login(usuario.text, senha.text)
+            size_hint_x: 1
+            pos_hint: {'center_x': 0.5}
+
+            MDButtonText:
+                text: "ENTRAR"
+                font_size: "16sp"
+                bold: True
+                
+        MDButton:
+            style: "text"
+            on_release: app.esqueci_senha()
+            pos_hint: {'center_x': 0.5}
+
+            MDButtonText:
+                text: 'Esqueci minha senha'
+                theme_text_color: 'Primary'
+                font_size: "14sp"
 '''
 
-class Example(MDApp):
+class LoginApp(MDApp):
+    dialog = None
+    dynamic_color_activated = False
+
     def build(self):
-        # Configuração inicial do tema
+        # Configuração inicial segura
         self.theme_cls.theme_style = "Light"
-        self.theme_cls.primary_palette = "Blue"
+        self.theme_cls.primary_palette = "Green"
         return Builder.load_string(KV)
 
     def on_start(self):
-        # Tenta ativar automaticamente após um breve delay
-        Clock.schedule_once(lambda dt: self.activate_dynamic_color(), 2)
+        """Tenta ativar o Material You com tratamento de erro melhorado"""
+        Clock.schedule_once(lambda dt: self.safe_activate_dynamic_color(), 1)
 
-    def activate_dynamic_color(self, *args):
-        """Ativa as cores dinâmicas sem precisar de permissões"""
+    def safe_activate_dynamic_color(self):
+        """Ativa o dynamic color com proteção contra erros"""
         try:
-            print("Tentando ativar dynamic_color...")
+            print("Tentando ativar Material You...")
             
-            # Método correto para ativar dynamic_color
+            # Primeiro, tenta a abordagem mais recente
             self.theme_cls.dynamic_color = True
-            # Força a atualização das cores
-            self.theme_cls.set_colors()
             
-            # Atualiza a UI após as cores serem carregadas
-            Clock.schedule_once(self.update_ui, 0.5)
+            # Usamos um método diferente para evitar o bug
+            self.force_refresh_theme()
             
-        except Exception as e:
-            print(f"Erro ao ativar dynamic_color: {e}")
-            self.fallback_theme()
-
-    def update_ui(self, dt):
-        """Atualiza a interface com as cores dinâmicas"""
-        try:
-            # Atualiza o texto de status
-            status_text = "Cores dinâmicas ativadas!\\n"
-            
-            # Acessa as cores de forma segura
-            if hasattr(self.theme_cls, '_primary_color'):
-                primary = self.theme_cls._primary_color
-                status_text += f"Cor primária: RGB{primary[:3]}"
-            else:
-                status_text += "Usando cores do tema"
-            
-            self.root.ids.status_label.text = status_text
-            self.root.ids.check_btn.text = "Cores Ativadas!"
-            self.root.ids.check_btn.disabled = True
-            
-            print("Dynamic color aplicado com sucesso!")
+            self.dynamic_color_activated = True
+            print("✅ Material You ativado com sucesso!")
             
         except Exception as e:
-            print(f"Erro ao atualizar UI: {e}")
-            self.fallback_theme()
+            print(f"❌ Erro ao ativar Material You: {e}")
+            self.dynamic_color_activated = False
+            self.safe_fallback_theme()
 
-    def fallback_theme(self):
-        """Fallback caso o dynamic_color não funcione"""
+    def force_refresh_theme(self):
+        """Força atualização do tema sem usar set_colors() problemático"""
         try:
-            # Tenta detectar o tema do sistema
-            from jnius import autoclass
-            Configuration = autoclass('android.content.res.Configuration')
-            context = autoclass('org.kivy.android.PythonActivity').mActivity
+            # Método alternativo para atualizar cores
+            current_style = self.theme_cls.theme_style
+            # Alterna temporariamente o tema para forçar atualização
+            self.theme_cls.theme_style = "Dark" if current_style == "Light" else "Light"
+            self.theme_cls.theme_style = current_style
+        except Exception as e:
+            print(f"Aviso no refresh: {e}")
+
+    def safe_fallback_theme(self):
+        """Fallback seguro sem usar set_colors()"""
+        try:
+            print("Aplicando fallback seguro...")
             
-            current_night_mode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK
+            # IMPORTANTE: Desativa dynamic_color antes do fallback
+            self.theme_cls.dynamic_color = False
             
-            if current_night_mode == Configuration.UI_MODE_NIGHT_YES:
-                self.theme_cls.theme_style = "Dark"
-                self.theme_cls.primary_palette = "DeepPurple"
-                theme_info = "Tema Escuro (Fallback)"
-            else:
+            # Aplica tema simples sem dependências problemáticas
+            self.theme_cls.theme_style = "Light"
+            self.theme_cls.primary_palette = "Green"
+            
+            print("✅ Fallback aplicado com sucesso")
+            
+        except Exception as e:
+            print(f"❌ Erro no fallback: {e}")
+            # Último recurso - reinicia o tema_cls
+            try:
                 self.theme_cls.theme_style = "Light"
-                self.theme_cls.primary_palette = "Blue" 
-                theme_info = "Tema Claro (Fallback)"
-                
-            self.root.ids.status_label.text = theme_info
-            self.root.ids.check_btn.text = "Tema Fallback"
-            
-        except Exception as e:
-            print(f"Erro no fallback: {e}")
-            # Fallback final
-            self.theme_cls.primary_palette = "Teal"
-            self.root.ids.status_label.text = "Tema Padrão"
+            except:
+                pass
 
-if __name__ == "__main__":
-    Example().run()
+    def fazer_login(self, usuario, senha):
+        if usuario.strip() and senha.strip():
+            self.show_alert_dialog("Sucesso!", f"Login realizado para o usuário: {usuario}")
+        else:
+            self.show_alert_dialog("Erro", "Por favor, preencha todos os campos.")
+            
+    def esqueci_senha(self):
+        self.show_alert_dialog("Aviso", "Função 'Esqueci minha senha' ainda não foi implementada.")
+
+    def show_alert_dialog(self, title, text):
+        if self.dialog:
+            self.dialog.dismiss()
+
+        self.dialog = MDDialog(
+            MDDialogHeadlineText(text=title),
+            MDDialogSupportingText(text=text),
+            MDDialogButtonContainer(
+                MDButton(
+                    MDButtonText(text="OK"),
+                    style="text",
+                    on_release=self.close_dialog,
+                ),
+                spacing="8dp",
+            ),
+        )
+        self.dialog.open()
+
+    def close_dialog(self, *args):
+        if self.dialog:
+            self.dialog.dismiss()
+            self.dialog = None
+
+if __name__ == '__main__':
+    LoginApp().run()
