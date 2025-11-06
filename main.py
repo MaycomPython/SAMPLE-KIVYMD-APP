@@ -10,10 +10,7 @@ from kivymd.uix.dialog import (
     MDDialogSupportingText,
     MDDialogButtonContainer,
 )
-
-# Import dos componentes de Button que serão criados no código Python
 from kivymd.uix.button import MDButton, MDButtonText
-
 
 KV = '''
 MDScreen:
@@ -95,73 +92,62 @@ MDScreen:
 
 class LoginApp(MDApp):
     dialog = None
-    dynamic_color_activated = False
+    material_you_ativado = False
 
     def build(self):
-        # Configuração inicial segura
+        # Configuração inicial mínima
         self.theme_cls.theme_style = "Light"
-        self.theme_cls.primary_palette = "Green"
         return Builder.load_string(KV)
 
     def on_start(self):
-        """Tenta ativar o Material You com tratamento de erro melhorado"""
-        Clock.schedule_once(lambda dt: self.safe_activate_dynamic_color(), 1)
+        """Tenta ativar o Material You de forma segura"""
+        Clock.schedule_once(self.tentar_material_you, 1)
 
-    def safe_activate_dynamic_color(self):
-        """Ativa o dynamic color com proteção contra erros"""
+    def tentar_material_you(self, dt):
+        """Método simplificado e direto para ativar Material You"""
         try:
-            print("Tentando ativar Material You...")
+            print("🎨 Tentando ativar Material You...")
             
-            # Primeiro, tenta a abordagem mais recente
+            # Método direto que funcionou no outro script
             self.theme_cls.dynamic_color = True
             
-            # Usamos um método diferente para evitar o bug
-            self.force_refresh_theme()
-            
-            self.dynamic_color_activated = True
-            print("✅ Material You ativado com sucesso!")
+            # Pequeno delay para garantir que as cores sejam aplicadas
+            Clock.schedule_once(self.verificar_cores, 0.5)
             
         except Exception as e:
-            print(f"❌ Erro ao ativar Material You: {e}")
-            self.dynamic_color_activated = False
-            self.safe_fallback_theme()
+            print(f"❌ Material You não disponível: {e}")
+            self.aplicar_tema_fallback()
 
-    def force_refresh_theme(self):
-        """Força atualização do tema sem usar set_colors() problemático"""
+    def verificar_cores(self, dt):
+        """Verifica se as cores dinâmicas foram aplicadas"""
         try:
-            # Método alternativo para atualizar cores
-            current_style = self.theme_cls.theme_style
-            # Alterna temporariamente o tema para forçar atualização
-            self.theme_cls.theme_style = "Dark" if current_style == "Light" else "Light"
-            self.theme_cls.theme_style = current_style
+            # Verifica se as cores dinâmicas estão funcionando
+            if hasattr(self.theme_cls, 'primary_color') and self.theme_cls.primary_color:
+                self.material_you_ativado = True
+                print("✅ Material You ativado com sucesso!")
+                print(f"Cor primária: {self.theme_cls.primary_color}")
+            else:
+                self.aplicar_tema_fallback()
+                
         except Exception as e:
-            print(f"Aviso no refresh: {e}")
+            print(f"⚠️ Aviso na verificação de cores: {e}")
+            self.aplicar_tema_fallback()
 
-    def safe_fallback_theme(self):
-        """Fallback seguro sem usar set_colors()"""
+    def aplicar_tema_fallback(self):
+        """Aplica fallback seguro sem Material You"""
         try:
-            print("Aplicando fallback seguro...")
-            
-            # IMPORTANTE: Desativa dynamic_color antes do fallback
+            print("🔄 Aplicando tema fallback...")
             self.theme_cls.dynamic_color = False
-            
-            # Aplica tema simples sem dependências problemáticas
-            self.theme_cls.theme_style = "Light"
             self.theme_cls.primary_palette = "Green"
-            
-            print("✅ Fallback aplicado com sucesso")
-            
+            self.theme_cls.theme_style = "Light"
+            self.material_you_ativado = False
         except Exception as e:
-            print(f"❌ Erro no fallback: {e}")
-            # Último recurso - reinicia o tema_cls
-            try:
-                self.theme_cls.theme_style = "Light"
-            except:
-                pass
+            print(f"⚠️ Erro no fallback: {e}")
 
     def fazer_login(self, usuario, senha):
         if usuario.strip() and senha.strip():
-            self.show_alert_dialog("Sucesso!", f"Login realizado para o usuário: {usuario}")
+            status_material = "com Material You ✅" if self.material_you_ativado else "com tema padrão 🔄"
+            self.show_alert_dialog("Sucesso!", f"Login realizado para: {usuario}\n{status_material}")
         else:
             self.show_alert_dialog("Erro", "Por favor, preencha todos os campos.")
             
