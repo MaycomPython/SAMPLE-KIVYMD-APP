@@ -1,9 +1,7 @@
 from kivy.lang import Builder
-from kivymd.app import MDApp
-from kivy.metrics import dp
 from kivy.clock import Clock
-
-# Import dos componentes de Dialog
+from kivy.metrics import dp
+from kivymd.app import MDApp
 from kivymd.uix.dialog import (
     MDDialog,
     MDDialogHeadlineText,
@@ -76,8 +74,6 @@ MDScreen:
 
             MDButtonText:
                 text: "ENTRAR"
-                font_size: "16sp"
-                bold: True
                 
         MDButton:
             style: "text"
@@ -87,67 +83,92 @@ MDScreen:
             MDButtonText:
                 text: 'Esqueci minha senha'
                 theme_text_color: 'Primary'
-                font_size: "14sp"
+
+        MDLabel:
+            id: status_label
+            text: "Verificando tema do sistema..."
+            halign: "center"
+            theme_text_color: "Secondary"
+            font_size: "12sp"
+            adaptive_height: True
 '''
 
-class LoginApp(MDApp):
+class DynamicLoginApp(MDApp):
     dialog = None
-    material_you_ativado = False
 
     def build(self):
-        # Configuração inicial mínima
         self.theme_cls.theme_style = "Light"
+        self.theme_cls.primary_palette = "Green"
         return Builder.load_string(KV)
 
     def on_start(self):
-        """Tenta ativar o Material You de forma segura"""
-        Clock.schedule_once(self.tentar_material_you, 1)
+        Clock.schedule_once(lambda dt: self.activate_dynamic_color(), 1)
 
-    def tentar_material_you(self, dt):
-        """Método simplificado e direto para ativar Material You"""
+    def activate_dynamic_color(self, *args):
+        """Ativa as cores dinâmicas."""
         try:
-            print("🎨 Tentando ativar Material You...")
-            
-            # Método direto que funcionou no outro script
+            print("Tentando ativar dynamic_color...")
             self.theme_cls.dynamic_color = True
-            
-            # Pequeno delay para garantir que as cores sejam aplicadas
-            Clock.schedule_once(self.verificar_cores, 0.5)
-            
+            self.theme_cls.set_colors()
+            Clock.schedule_once(self.update_ui, 0.5)
         except Exception as e:
-            print(f"❌ Material You não disponível: {e}")
-            self.aplicar_tema_fallback()
+            print(f"Erro ao ativar dynamic_color: {e}")
+            # --- CORREÇÃO CRÍTICA AQUI ---
+            # Desativa o modo dinâmico antes de chamar o fallback para evitar o crash.
+            self.theme_cls.dynamic_color = False
+            self.fallback_theme()
 
-    def verificar_cores(self, dt):
-        """Verifica se as cores dinâmicas foram aplicadas"""
+    def update_ui(self, dt):
+        """Atualiza a interface com as cores dinâmicas."""
         try:
-            # Verifica se as cores dinâmicas estão funcionando
-            if hasattr(self.theme_cls, 'primary_color') and self.theme_cls.primary_color:
-                self.material_you_ativado = True
-                print("✅ Material You ativado com sucesso!")
-                print(f"Cor primária: {self.theme_cls.primary_color}")
+            primary_color_info = ""
+            if hasattr(self.theme_cls, '_primary_color'):
+                primary = self.theme_cls._primary_color
+                primary_color_info = f" | Cor primária: RGB{primary[:3]}"
+
+            status_text = f"Cores dinâmicas ativadas!{primary_color_info}"
+            self.root.ids.status_label.text = status_text
+            print("Dynamic color aplicado com sucesso!")
+            
+            Clock.schedule_once(lambda dt: self.hide_status_label(), 4)
+        except Exception as e:
+            print(f"Erro ao atualizar UI: {e}")
+            self.fallback_theme()
+
+    def fallback_theme(self):
+        """Fallback caso o dynamic_color não funcione."""
+        theme_info = "Tema Padrão (Fallback)"
+        try:
+            from jnius import autoclass
+            Configuration = autoclass('android.content.res.Configuration')
+            context = autoclass('org.kivy.android.PythonActivity').mActivity
+            
+            current_night_mode = context.getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK
+            
+            if current_night_mode == Configuration.UI_MODE_NIGHT_YES:
+                self.theme_cls.theme_style = "Dark"
+                self.theme_cls.primary_palette = "DeepPurple"
+                theme_info = "Tema Escuro (Fallback)"
             else:
-                self.aplicar_tema_fallback()
+                self.theme_cls.theme_style = "Light"
+                self.theme_cls.primary_palette = "Blue" 
+                theme_info = "Tema Claro (Fallback)"
                 
         except Exception as e:
-            print(f"⚠️ Aviso na verificação de cores: {e}")
-            self.aplicar_tema_fallback()
-
-    def aplicar_tema_fallback(self):
-        """Aplica fallback seguro sem Material You"""
-        try:
-            print("🔄 Aplicando tema fallback...")
-            self.theme_cls.dynamic_color = False
-            self.theme_cls.primary_palette = "Green"
+            print(f"Erro no fallback (usando tema padrão): {e}")
             self.theme_cls.theme_style = "Light"
-            self.material_you_ativado = False
-        except Exception as e:
-            print(f"⚠️ Erro no fallback: {e}")
+            self.theme_cls.primary_palette = "Teal"
+        finally:
+            self.root.ids.status_label.text = theme_info
+            Clock.schedule_once(lambda dt: self.hide_status_label(), 4)
 
+    def hide_status_label(self):
+        self.root.ids.status_label.text = ""
+
+    # --- Métodos da lógica de login ---
     def fazer_login(self, usuario, senha):
         if usuario.strip() and senha.strip():
-            status_material = "com Material You ✅" if self.material_you_ativado else "com tema padrão 🔄"
-            self.show_alert_dialog("Sucesso!", f"Login realizado para: {usuario}\n{status_material}")
+            self.show_alert_dialog("Sucesso!", f"Login realizado para o usuário: {usuario}")
         else:
             self.show_alert_dialog("Erro", "Por favor, preencha todos os campos.")
             
@@ -156,7 +177,7 @@ class LoginApp(MDApp):
 
     def show_alert_dialog(self, title, text):
         if self.dialog:
-            self.dialog.dismiss()
+            return
 
         self.dialog = MDDialog(
             MDDialogHeadlineText(text=title),
@@ -178,4 +199,4 @@ class LoginApp(MDApp):
             self.dialog = None
 
 if __name__ == '__main__':
-    LoginApp().run()
+    DynamicLoginApp().run()
